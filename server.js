@@ -80,8 +80,6 @@ io.on("connection", (socket) => {
     roomCodes.set(roomId, code);
   });
 
-
-  
   socket.on("disconnect", () => {
     console.log("Client disconnected:", socket.id);
 
@@ -107,6 +105,12 @@ io.on("connection", (socket) => {
         }
       }
     }
+  });
+
+  // In your server.js
+  socket.on("cursor-update", ({ roomId, username, line, column }) => {
+    // Send to all other clients in the room
+    socket.to(roomId).emit("cursor-update", { username, line, column });
   });
 });
 

@@ -61,6 +61,10 @@ const Page = () => {
   const [statusMessage, setStatusMessage] = useState("");
   const [users, setUsers] = useState<Array<string>>([]);
   const editorRef = useRef(null);
+  const [cursors, setCursors] = useState<{
+    [key: string]: { line: number; column: number };
+  }>({});
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Judge0 API configuration
   const JUDGE0_API_KEY = process.env.NEXT_PUBLIC_JUDGE0_API_KEY || "";
@@ -69,6 +73,9 @@ const Page = () => {
     "https://judge0-ce.p.rapidapi.com";
 
   useEffect(() => {
+    if (socket.connected) {
+      socket.emit("join-room", { roomId, username }, () => {});
+    }
     socket.on("connect", () => {
       socket.emit("join-room", { roomId, username }, () => {
         console.log("User joining room from client - CALLBACK EXECUTED");
@@ -85,11 +92,29 @@ const Page = () => {
 
     socket.on("room-users", (users: Array<string>) => {
       setUsers(users);
+
+      setCursors((prev) => {
+        const updatedCursors: {
+          [key: string]: { line: number; column: number };
+        } = {};
+        Object.keys(prev).forEach((cursorUser) => {
+          if (users.includes(cursorUser) || cursorUser === username) {
+            updatedCursors[cursorUser] = prev[cursorUser];
+          }
+        });
+        return updatedCursors;
+      });
     });
 
     socket.on("user-left", (data) => {
       if (data.username !== username) {
         toast.error(`${data.username} left the room!`);
+
+        setCursors((prev) => {
+          const updatedCursors = { ...prev };
+          delete updatedCursors[data.username];
+          return updatedCursors;
+        });
       }
     });
 
@@ -105,6 +130,15 @@ const Page = () => {
       setCode(data.code);
     });
 
+    socket.on("cursor-update", (data) => {
+      if (data.username !== username) {
+        setCursors((prev) => ({
+          ...prev,
+          [data.username]: { line: data.line, column: data.column },
+        }));
+      }
+    });
+
     return () => {
       socket.off("connect");
       socket.off("user-left");
@@ -113,6 +147,7 @@ const Page = () => {
       socket.off("user-joined");
       socket.off("room-users");
       socket.off("disconnect");
+      socket.off("cursor-update");
       socket.off("code-update");
     };
   }, [username, roomId]);
@@ -126,6 +161,18 @@ const Page = () => {
   // Handle editor mounts
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
+
+    // Add cursor tracking
+    editor.onDidChangeCursorPosition((e: any) => {
+      if (editor.hasTextFocus()) {
+        socket.emit("cursor-update", {
+          roomId,
+          username,
+          line: e.position.lineNumber,
+          column: e.position.column,
+        });
+      }
+    });
   }
 
   // Handle code changes
@@ -228,6 +275,18 @@ const Page = () => {
     }
   }
 
+  function getUserColor(username: string, opacity = 0.3) {
+    let hash = 0;
+    for (let i = 0; i < username.length; i++) {
+      hash = username.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    const saturation = 90; 
+    const lightness = 75; 
+
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`;
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-7xl mx-auto">
@@ -266,7 +325,7 @@ const Page = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Editor */}
           <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <div className="h-[600px] w-full">
+            <div className="h-[600px] w-full relative">
               <Editor
                 height="100%"
                 defaultLanguage={language}
@@ -282,6 +341,40 @@ const Page = () => {
                   automaticLayout: true,
                 }}
               />
+              {Object.entries(cursors).map(([user, position]) => (
+                <div
+                  key={user}
+                  className="absolute z-50 pointer-events-none"
+                  style={{
+                    left: `${position.column * 8}px`,
+                    top: `${position.line * 18}px`,
+                    color: getUserColor(user),
+                  }}
+                >
+                  <div
+                    style={{
+                      borderLeft: `2px solid ${getUserColor(user)}`,
+                      height: "18px",
+                      position: "relative",
+                    }}
+                  />
+                  <div
+                    style={{
+                      backgroundColor: getUserColor(user),
+                      color: "white",
+                      fontSize: "10px",
+                      padding: "2px 4px",
+                      borderRadius: "2px",
+                      whiteSpace: "nowrap",
+                      position: "absolute",
+                      top: "0px",
+                      backdropFilter: "blur(2px)",
+                    }}
+                  >
+                    {user}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
