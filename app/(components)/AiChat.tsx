@@ -49,7 +49,7 @@ const AiChat: React.FC = () => {
               {
                 role: "system",
                 content:
-                  "You are CodeAssist, an AI programming assistant. Provide helpful, concise answers to coding questions. Include code examples when appropriate. Keep explanations clear and focused.",
+                  "You are CodeAssist, an AI programming assistant. Provide helpful, concise answers to coding questions. Include code examples when appropriate. Keep explanations clear and focused.also give appropriate code snipets which the user can just copy paste.",
               },
               ...messages.map((msg) => ({
                 role: msg.role,

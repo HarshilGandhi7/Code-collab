@@ -67,9 +67,10 @@ const Page = () => {
     [key: string]: { line: number; column: number };
   }>({});
   const [userInput, setUserInput] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
-  // Judge0 API configuration
   const JUDGE0_API_KEY = process.env.NEXT_PUBLIC_JUDGE0_API_KEY || "";
   const JUDGE0_API_URL =
     process.env.NEXT_PUBLIC_JUDGE0_API_URL ||
@@ -157,15 +158,31 @@ const Page = () => {
 
   function handleLanguageChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newLanguage = e.target.value;
-    setLanguage(newLanguage);
-    socket.emit("language-update", { roomId, language: newLanguage });
+    if (language === newLanguage) return;
+
+    setPendingLanguage(newLanguage);
+    setShowModal(true);
   }
 
-  // Handle editor mounts
+  function confirmLanguageChange() {
+    if (pendingLanguage) {
+      setLanguage(pendingLanguage);
+      socket.emit("language-update", { roomId, language: pendingLanguage });
+
+      setCode("");
+      socket.emit("code-update", { roomId, code: "" });
+    }
+    setShowModal(false);
+  }
+
+  function cancelLanguageChange() {
+    setPendingLanguage(null);
+    setShowModal(false);
+  }
+
   function handleEditorDidMount(editor: any) {
     editorRef.current = editor;
 
-    // Add cursor tracking
     editor.onDidChangeCursorPosition((e: any) => {
       if (editor.hasTextFocus()) {
         socket.emit("cursor-update", {
@@ -178,13 +195,11 @@ const Page = () => {
     });
   }
 
-  // Handle code changes
   function handleEditorChange(value: string | undefined) {
     setCode(value || "");
     socket.emit("code-update", { roomId, code: value });
   }
 
-  // Execute code using Judge0 API
   async function executeCode() {
     setIsRunning(true);
     setOutput("");
@@ -238,7 +253,6 @@ const Page = () => {
           const { status, stdout, stderr, compile_output, message } =
             result.data;
 
-          // Checking whether the execution is complete
           if (status.id >= 3) {
             clearInterval(intervalId);
 
@@ -323,7 +337,7 @@ const Page = () => {
           >
             {isRunning ? "Running..." : "Run Code"}
           </button>
-        <AiChat />
+          <AiChat />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -413,12 +427,70 @@ const Page = () => {
           </div>
         </div>
 
-        {/* Add the AiChat component */}
         <AiChat />
 
-        {/* Your existing Chat component */}
         <Chat socket={socket} roomId={roomId} username={username} />
       </div>
+      {showModal && (
+        <div className="fixed inset-0 bg-opacity-70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gray-800 bg-opacity-95 p-6 rounded-lg shadow-xl max-w-md w-full border border-gray-700 transform transition-all duration-300 scale-100">
+            <div className="flex items-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-red-400 mr-2"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <h3 className="text-xl font-bold text-red-400">Warning</h3>
+            </div>
+
+            <p className="mb-6 text-gray-300 leading-relaxed">
+              Changing the programming language will delete the current code in
+              the editor.
+              <span className="block mt-2 font-semibold text-red-300">
+                This action cannot be undone.
+              </span>
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={cancelLanguageChange}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmLanguageChange}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-md text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 flex items-center"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 mr-1"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+                Change Language
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
