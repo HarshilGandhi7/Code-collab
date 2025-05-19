@@ -7,6 +7,7 @@ import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import ConnectedUsers from "@/app/(components)/ConnectedUsers";
 import Chat from "@/app/(components)/Chat";
+import AiChat from "@/app/(components)/AiChat";
 
 const defaultCode = "";
 
@@ -322,6 +323,7 @@ const Page = () => {
           >
             {isRunning ? "Running..." : "Run Code"}
           </button>
+        <AiChat />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -410,6 +412,11 @@ const Page = () => {
             </div>
           </div>
         </div>
+
+        {/* Add the AiChat component */}
+        <AiChat />
+
+        {/* Your existing Chat component */}
         <Chat socket={socket} roomId={roomId} username={username} />
       </div>
     </div>

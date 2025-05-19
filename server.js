@@ -18,7 +18,7 @@ app.use(
 );
 
 app.get("/", (req, res) => {
-  res.send("Socket.IO server is runing");
+  res.send("server is runing");
 });
 
 const io = new Server(server, {
