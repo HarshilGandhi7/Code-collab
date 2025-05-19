@@ -6,6 +6,7 @@ import axios from "axios";
 import { io } from "socket.io-client";
 import toast from "react-hot-toast";
 import ConnectedUsers from "@/app/(components)/ConnectedUsers";
+import Chat from "@/app/(components)/Chat";
 
 const defaultCode = "";
 
@@ -47,7 +48,7 @@ const languageMap: LanguageMap = {
   swift: { id: 83, name: "Swift (5.2.3)" },
 };
 
-const socket = io("http://localhost:4000");
+const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL);
 
 const Page = () => {
   const params = useParams();
@@ -64,6 +65,7 @@ const Page = () => {
   const [cursors, setCursors] = useState<{
     [key: string]: { line: number; column: number };
   }>({});
+  const [userInput, setUserInput] = useState("");
   const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Judge0 API configuration
@@ -193,7 +195,7 @@ const Page = () => {
         {
           source_code: btoa(code),
           language_id: languageMap[language].id,
-          stdin: "",
+          stdin: btoa(userInput),
         },
         {
           headers: {
@@ -235,7 +237,7 @@ const Page = () => {
           const { status, stdout, stderr, compile_output, message } =
             result.data;
 
-          // Checking if the execution is complete
+          // Checking whether the execution is complete
           if (status.id >= 3) {
             clearInterval(intervalId);
 
@@ -281,8 +283,8 @@ const Page = () => {
       hash = username.charCodeAt(i) + ((hash << 5) - hash);
     }
     const hue = Math.abs(hash) % 360;
-    const saturation = 90; 
-    const lightness = 75; 
+    const saturation = 90;
+    const lightness = 75;
 
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`;
   }
@@ -380,17 +382,35 @@ const Page = () => {
 
           {/* Output */}
           <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <div className="p-3 bg-gray-700 text-sm font-semibold flex justify-between">
-              <span>Output</span>
+            {/* User input section */}
+            <div className="p-3 bg-gray-700 border-t border-gray-600">
+              <label
+                htmlFor="userInput"
+                className="block text-sm font-medium mb-1"
+              >
+                Program Input (stdin)
+              </label>
+              <textarea
+                id="userInput"
+                value={userInput}
+                onChange={(e) => setUserInput(e.target.value)}
+                placeholder="Enter input for your program here..."
+                className="w-full bg-gray-800 text-white p-2 rounded font-mono text-sm resize-none h-20"
+              />
+            </div>
+            <div className="pl-3 bg-gray-700 text-sm font-semibold flex justify-between">
+              <span className="block text-sm font-medium mb-1">Output</span>
               {statusMessage && (
                 <span className="text-yellow-400">{statusMessage}</span>
               )}
             </div>
-            <div className="p-4 h-[560px] overflow-auto font-mono text-sm whitespace-pre-wrap">
+
+            <div className="p-4 h-[460px] overflow-auto font-mono text-sm whitespace-pre-wrap">
               {output || "Run your code to see output here"}
             </div>
           </div>
         </div>
+        <Chat socket={socket} roomId={roomId} username={username} />
       </div>
     </div>
   );
