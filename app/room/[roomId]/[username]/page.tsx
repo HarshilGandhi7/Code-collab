@@ -156,6 +156,44 @@ const Page = () => {
     };
   }, [username, roomId]);
 
+  function downloadCodeAsFile() {
+    const blob = new Blob([code], { type: "text/plain;charset=utf-8" });
+
+    const url = URL.createObjectURL(blob);
+
+    const filename = `${roomId}_${language}_code.${getFileExtension(language)}`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }
+
+  function getFileExtension(language: string): string {
+    const extensions: { [key: string]: string } = {
+      javascript: "js",
+      typescript: "ts",
+      python: "py",
+      java: "java",
+      cpp: "cpp",
+      c: "c",
+      go: "go",
+      rust: "rs",
+      ruby: "rb",
+      php: "php",
+      csharp: "cs",
+      kotlin: "kt",
+      swift: "swift",
+    };
+
+    return extensions[language] || "txt";
+  }
+
   function handleLanguageChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const newLanguage = e.target.value;
     if (language === newLanguage) return;
@@ -336,6 +374,24 @@ const Page = () => {
             className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded flex items-center gap-2 disabled:opacity-50"
           >
             {isRunning ? "Running..." : "Run Code"}
+          </button>
+          <button
+            onClick={downloadCodeAsFile}
+            className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Download
           </button>
           <AiChat />
         </div>
