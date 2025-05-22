@@ -16,11 +16,7 @@ import {
 } from "firebase/firestore";
 import { getAuthenticatedUser, signUpUser } from "@/utils/auth";
 
-interface SignupFormProps {
-  onSubmit: (username: string, email: string, password: string) => void;
-}
-
-const SignupForm: React.FC<SignupFormProps> =  ({ onSubmit }) => {
+const SignupForm = () => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

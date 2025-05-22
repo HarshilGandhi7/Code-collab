@@ -6,11 +6,8 @@ import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { getAuthenticatedUser, loginUser } from "@/utils/auth";
 
-interface LoginFormProps {
-  onSubmit: (username: string, password: string) => void;
-}
 
-const LoginForm: React.FC<LoginFormProps> = ({ onSubmit }) => {
+const LoginForm = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter();
