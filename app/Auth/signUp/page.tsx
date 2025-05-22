@@ -39,7 +39,7 @@ const SignupForm = () => {
     const SignIn = await signUpUser(username, email, password);
     if (SignIn.success) {
       toast.success("Account created successfully");
-      router.push("Auth/login");
+      router.push("/Auth/login");
     } else {
       setError(SignIn.error || "Error in creating account");
       toast.error(SignIn.error || "Error in creating account");
