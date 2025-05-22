@@ -4,16 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { auth, db } from "@/firebaseConfig";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import {
-  collection,
-  doc,
-  getDocs,
-  query,
-  setDoc,
-  where,
-} from "firebase/firestore";
 import { getAuthenticatedUser, signUpUser } from "@/utils/auth";
 
 const SignupForm = () => {
@@ -39,7 +29,7 @@ const SignupForm = () => {
     const SignIn = await signUpUser(username, email, password);
     if (SignIn.success) {
       toast.success("Account created successfully");
-      router.push("/Auth/login");
+      window.location.href = "/Auth/login";
     } else {
       setError(SignIn.error || "Error in creating account");
       toast.error(SignIn.error || "Error in creating account");
