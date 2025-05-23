@@ -6,7 +6,6 @@ interface ConnectedUsersProps {
 }
 
 const ConnectedUsers = memo(({ users, currentUser }: ConnectedUsersProps) => {
-  console.log('Connected users component rendering');
   
   return (
     <div className="bg-gray-800 rounded-lg p-3">

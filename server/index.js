@@ -47,14 +47,15 @@ const roomCodes = new Map();
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
   
-  socket.on("join-room", ({ roomId, username }, callback) => {
+  socket.on("join-room", ({ roomId, username,code,language }, callback) => {
     socket.join(roomId);
     socket.data = { roomId, username };
     if (!rooms.has(roomId)) {
-      roomLanguages.set(roomId, "javascript");
+      roomLanguages.set(roomId, language);
       rooms.set(roomId, new Set());
-      roomCodes.set(roomId, "");
+      roomCodes.set(roomId, code);
     }
+    console.log(code,language)
     rooms.get(roomId).add(username);
     const roomUsers = Array.from(rooms.get(roomId));
     io.to(roomId).emit("user-joined", {

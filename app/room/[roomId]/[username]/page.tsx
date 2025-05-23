@@ -1,5 +1,5 @@
 "use client";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import React, { useState, useRef, useEffect } from "react";
 import Editor from "@monaco-editor/react";
 import axios from "axios";
@@ -8,6 +8,16 @@ import toast from "react-hot-toast";
 import ConnectedUsers from "@/app/(components)/ConnectedUsers";
 import Chat from "@/app/(components)/Chat";
 import AiChat from "@/app/(components)/AiChat";
+import { db } from "@/firebaseConfig";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  setDoc,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 
 const defaultCode = "";
 
@@ -69,7 +79,6 @@ const Page = () => {
   const [userInput, setUserInput] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
-  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   const JUDGE0_API_KEY = process.env.NEXT_PUBLIC_JUDGE0_API_KEY || "";
   const JUDGE0_API_URL =
@@ -77,16 +86,68 @@ const Page = () => {
     "https://judge0-ce.p.rapidapi.com";
 
   useEffect(() => {
+    const addRoomToUser = async () => {
+      try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          toast.error("User not found");
+          return;
+        }
+
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        const rooms = userData?.rooms || [];
+
+        if (!rooms.includes(roomId)) {
+          rooms.push(roomId);
+          await setDoc(
+            doc(db, "users", userDoc.id),
+            { rooms },
+            { merge: true }
+          );
+        }
+      } catch (error) {
+        console.error("Error adding room to user:", error);
+      }
+    };
+
+    addRoomToUser();
+  }, []);
+
+  useEffect(() => {
+    const fetchRoomCode = async () => {
+      const collectionRef = collection(db, "rooms");
+      const q = query(collectionRef, where("roomId", "==", roomId));
+      const querySnapshot = await getDocs(q);
+      const roomDoc = querySnapshot.docs[0];
+      const roomData = roomDoc.data();
+      let roomCode = "";
+      let roomLanguage = "javascript";
+      if (roomData) {
+        roomCode = roomData.code || "";
+        roomLanguage = roomData.language || "javascript";
+        setCode(roomCode);
+        setLanguage(roomLanguage);
+      }
+      socket.emit(
+        "join-room",
+        { roomId, username, code: roomCode, language: roomLanguage },
+        () => {}
+      );
+    };
+
     if (socket.connected) {
-      socket.emit("join-room", { roomId, username }, () => {});
+      fetchRoomCode();
     }
     socket.on("connect", () => {
-      socket.emit("join-room", { roomId, username }, () => {
-        console.log("User joining room from client - CALLBACK EXECUTED");
-      });
+      fetchRoomCode();
     });
 
     socket.on("user-joined", (data) => {
+      saveRoomCode(data.language, data.code);
       setLanguage(data.language);
       setCode(data.code);
       if (data.username !== username) {
@@ -119,6 +180,8 @@ const Page = () => {
           delete updatedCursors[data.username];
           return updatedCursors;
         });
+      } else {
+        saveRoomCode(language, code);
       }
     });
 
@@ -172,6 +235,34 @@ const Page = () => {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
+  }
+
+  async function saveRoomCode(language: string, code: string = "") {
+    try {
+      const roomRef = doc(db, "rooms", roomId);
+      const roomSnap = await getDoc(roomRef);
+      if (!roomSnap.exists()) {
+        await setDoc(roomRef, {
+          code: code,
+          roomId: roomId,
+          language: language,
+          createdAt: new Date(),
+        });
+      } else {
+        await setDoc(
+          roomRef,
+          {
+            code: code,
+            roomId: roomId,
+            language: language,
+            lastUpdated: new Date(),
+          },
+          { merge: true }
+        );
+      }
+    } catch (error) {
+      toast.error("Failed to save code. Please try again.");
+    }
   }
 
   function getFileExtension(language: string): string {
@@ -342,6 +433,13 @@ const Page = () => {
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`;
   }
 
+  const handleLeaveRoom = () => {
+    saveRoomCode(language, code);
+    socket.emit("user-left", { roomId, username });
+    toast.success("Left the room successfully!");
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-7xl mx-auto">
@@ -352,9 +450,15 @@ const Page = () => {
           </div>
           <div className="flex items-center gap-4">
             <ConnectedUsers users={users} currentUser={username} />
+
+            <button
+              onClick={handleLeaveRoom}
+              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded flex items-center gap-2 transition-colors"
+            >
+              Leave Room
+            </button>
           </div>
         </header>
-
         <div className="flex gap-4 mb-4">
           <select
             value={language}
@@ -376,6 +480,23 @@ const Page = () => {
             {isRunning ? "Running..." : "Run Code"}
           </button>
           <button
+            onClick={() => {
+              saveRoomCode(language, code);
+              toast.success("Code saved successfully!");
+            }}
+            className="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded flex items-center gap-2"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" />
+            </svg>
+            Save
+          </button>
+          <button
             onClick={downloadCodeAsFile}
             className="bg-green-600 hover:bg-green-700 px-4 py-2 rounded flex items-center gap-2"
           >
@@ -393,9 +514,9 @@ const Page = () => {
             </svg>
             Download
           </button>
+
           <AiChat />
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Editor */}
           <div className="bg-gray-800 rounded-lg overflow-hidden">
@@ -482,9 +603,7 @@ const Page = () => {
             </div>
           </div>
         </div>
-
         <AiChat />
-
         <Chat socket={socket} roomId={roomId} username={username} />
       </div>
       {showModal && (

@@ -10,15 +10,31 @@ import {
   FiLock,
   FiGithub,
   FiExternalLink,
-  FiTwitter,
   FiLinkedin,
 } from "react-icons/fi";
 import { getAuthenticatedUser, logoutUser } from "@/utils/auth";
+import UserSessions from "./(components)/UserSessions";
+import { getRoomData } from "@/utils/room";
+import type { RoomData } from "@/utils/room";
+import { db } from "@/firebaseConfig";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
+import toast from "react-hot-toast";
 
 const Page = () => {
   const router = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [username, setUserName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sessions, setSessions] = useState<RoomData[]>([]);
+  const [pageLoading, setPageLoading] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,14 +46,89 @@ const Page = () => {
 
   React.useEffect(() => {
     const checkAuth = async () => {
+      setPageLoading(true);
       const userLoggedIn = await getAuthenticatedUser();
       if (userLoggedIn.isAuthenticated) {
         setUserName(userLoggedIn?.userData?.username || "user");
       }
+      setPageLoading(false);
     };
     checkAuth();
   }, [router]);
-  return (
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      if (!username) return;
+      setLoading(true);
+      try {
+        const usersCollection = collection(db, "users");
+        const userQuery = query(
+          usersCollection,
+          where("username", "==", username)
+        );
+        const data = await getDocs(userQuery);
+
+        if (data.empty) {
+          toast.error("No user found");
+          setLoading(false);
+          return;
+        }
+
+        const userDoc = data.docs[0];
+        const userData = userDoc.data();
+        const rooms = userData.rooms;
+        const roomPromises = rooms.map(async (roomId: string) => {
+          const roomsCollections = collection(db, "rooms");
+          const roomQuery = query(
+            roomsCollections,
+            where("roomId", "==", roomId)
+          );
+          const roomData = await getDocs(roomQuery);
+          if (!roomData.empty) {
+            const roomDoc = roomData.docs[0];
+            const roomDetails = roomDoc.data() as RoomData;
+            return {
+              roomId: roomDoc.id,
+              code: roomDetails.code,
+              language: roomDetails.language,
+            };
+            return null;
+          }
+        });
+        const resolvedRooms = await Promise.all(roomPromises);
+        const filteredRoomData= resolvedRooms.filter(
+          (room) => room !== null
+        ) as RoomData[];
+        console.log("Filtered Room Data:", filteredRoomData);
+        setSessions(filteredRoomData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching sessions:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [username]);
+
+  return pageLoading ? (
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-90 z-50">
+      <div className="relative">
+        {/* Outer ring */}
+        <div className="w-16 h-16 border-4 border-blue-400 border-opacity-20 rounded-full animate-spin"></div>
+        {/* Inner spinner */}
+        <div
+          className="absolute top-0 left-0 w-16 h-16 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"
+          style={{ animationDuration: "0.8s" }}
+        ></div>
+
+        {/* Optional loading text */}
+        <div className="mt-4 text-center text-blue-400 text-sm font-medium">
+          Loading...
+        </div>
+      </div>
+    </div>
+  ) : (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Navigation */}
       <header
@@ -58,7 +149,6 @@ const Page = () => {
             <div className="hidden md:flex md:items-center md:space-x-6">
               {username ? (
                 <>
-                  {/* Show this when user is logged in */}
                   <span className="text-gray-300">Welcome, {username}</span>
                   <button
                     onClick={async () => {
@@ -75,7 +165,6 @@ const Page = () => {
                 </>
               ) : (
                 <>
-                  {/* Show this when user is NOT logged in */}
                   <Link
                     href="/Auth/login"
                     className="text-gray-300 hover:text-white px-4 py-2 rounded-md text-sm"
@@ -225,6 +314,24 @@ const Page = () => {
         id="features"
         className="py-20 bg-gradient-to-b from-gray-800 to-gray-900"
       >
+        {username && (
+          <section className="py-16 px-4 max-w-7xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold mb-4">Your Coding Sessions</h2>
+              <p className="text-gray-400 max-w-2xl mx-auto">
+                Continue working on your previous projects or start a new one
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
+              </div>
+            ) : (
+              <UserSessions sessions={sessions} username={username} />
+            )}
+          </section>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-extrabold sm:text-4xl">

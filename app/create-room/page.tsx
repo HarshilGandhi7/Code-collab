@@ -28,6 +28,10 @@ const Page = () => {
     checkAuth();
   }, [router]);
 
+  const handleGoHome = () => {
+    router.push("/");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const finalRoomId = roomId.trim() || generateRoomId();
@@ -41,6 +45,26 @@ const Page = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
       <div className="w-full max-w-md p-8 space-y-8 bg-gray-800 rounded-xl shadow-lg">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={handleGoHome}
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+            Back to Home
+          </button>
+        </div>
         <div className="flex flex-col items-center justify-center mb-4">
           <div className="flex items-center gap-4 mb-2">
             <h1 className="text-2xl font-bold text-white">

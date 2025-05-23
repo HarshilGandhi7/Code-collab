@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   title: "Code-collab",
   description: "A collaborative code editor",
   icons: {
-    icon: "logo.png",
+    icon: "/logo.png",
   }
 };
 
