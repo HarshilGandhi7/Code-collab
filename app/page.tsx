@@ -14,7 +14,6 @@ import {
 } from "react-icons/fi";
 import { getAuthenticatedUser, logoutUser } from "@/utils/auth";
 import UserSessions from "./(components)/UserSessions";
-import { getRoomData } from "@/utils/room";
 import type { RoomData } from "@/utils/room";
 import { db } from "@/firebaseConfig";
 import {
@@ -92,18 +91,15 @@ const Page = () => {
               code: roomDetails.code,
               language: roomDetails.language,
             };
-            return null;
           }
         });
         const resolvedRooms = await Promise.all(roomPromises);
-        const filteredRoomData= resolvedRooms.filter(
-          (room) => room !== null
+        const filteredRoomData = resolvedRooms.filter(
+          (room) => room !== null && room!==undefined
         ) as RoomData[];
-        console.log("Filtered Room Data:", filteredRoomData);
         setSessions(filteredRoomData);
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching sessions:", error);
         setLoading(false);
       }
     };
@@ -112,6 +108,7 @@ const Page = () => {
   }, [username]);
 
   return pageLoading ? (
+    /* Loading Overlay */
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-90 z-50">
       <div className="relative">
         {/* Outer ring */}

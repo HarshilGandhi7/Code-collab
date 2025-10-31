@@ -26,7 +26,7 @@ interface LanguageOption {
   name: string;
 }
 
-type LanguageMap = {
+interface LanguageMap {
   [key: string]: LanguageOption;
   javascript: LanguageOption;
   typescript: LanguageOption;
@@ -41,7 +41,7 @@ type LanguageMap = {
   csharp: LanguageOption;
   kotlin: LanguageOption;
   swift: LanguageOption;
-};
+}
 
 const languageMap: LanguageMap = {
   javascript: { id: 63, name: "JavaScript (Node.js 12.14.0)" },
@@ -85,6 +85,7 @@ const Page = () => {
     process.env.NEXT_PUBLIC_JUDGE0_API_URL ||
     "https://judge0-ce.p.rapidapi.com";
 
+  // to be reviewed
   useEffect(() => {
     const addRoomToUser = async () => {
       try {
@@ -117,21 +118,25 @@ const Page = () => {
     addRoomToUser();
   }, []);
 
+  // to be reviewed
   useEffect(() => {
     const fetchRoomCode = async () => {
       const collectionRef = collection(db, "rooms");
       const q = query(collectionRef, where("roomId", "==", roomId));
       const querySnapshot = await getDocs(q);
       const roomDoc = querySnapshot.docs[0];
-      const roomData = roomDoc.data();
-      let roomCode = "";
       let roomLanguage = "javascript";
-      if (roomData) {
-        roomCode = roomData.code || "";
-        roomLanguage = roomData.language || "javascript";
-        setCode(roomCode);
-        setLanguage(roomLanguage);
+      let roomCode = "";
+      if (roomDoc) {
+        const roomData = roomDoc.data();
+        if (roomData) {
+          roomCode = roomData.code || "";
+          roomLanguage = roomData.language || "javascript";
+          setCode(roomCode);
+          setLanguage(roomLanguage);
+        }
       }
+
       socket.emit(
         "join-room",
         { roomId, username, code: roomCode, language: roomLanguage },
@@ -139,9 +144,6 @@ const Page = () => {
       );
     };
 
-    if (socket.connected) {
-      fetchRoomCode();
-    }
     socket.on("connect", () => {
       fetchRoomCode();
     });
@@ -171,6 +173,7 @@ const Page = () => {
       });
     });
 
+    // to be reviewed
     socket.on("user-left", (data) => {
       if (data.username !== username) {
         toast.error(`${data.username} left the room!`);
@@ -185,9 +188,7 @@ const Page = () => {
       }
     });
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
+    socket.on("disconnect", () => {});
 
     socket.on("language-update", (data) => {
       setLanguage(data.language);
@@ -324,6 +325,7 @@ const Page = () => {
     });
   }
 
+  // to be reviewed
   function handleEditorChange(value: string | undefined) {
     setCode(value || "");
     socket.emit("code-update", { roomId, code: value });
@@ -433,6 +435,7 @@ const Page = () => {
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`;
   }
 
+  // to be reviewed
   const handleLeaveRoom = () => {
     saveRoomCode(language, code);
     socket.emit("user-left", { roomId, username });

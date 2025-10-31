@@ -66,15 +66,23 @@ const SignupForm = () => {
             >
               Username
             </label>
+
             <input
               type="text"
               id="username"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (!value.includes(" ")) setUsername(value); 
+              }}
               required
               className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Choose a username"
             />
+
+              <p className="text-sm text-gray-400 mt-1">
+                *Username should not contain spaces.
+              </p>
           </div>
 
           <div className="space-y-2">
